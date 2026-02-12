@@ -31,7 +31,7 @@ export function DashboardsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/dashboards')
+    fetch('/api/dashboards')
       .then(res => res.json())
       .then(data => {
         setDashboards(data);
@@ -59,7 +59,7 @@ export function DashboardsPage() {
 
     setIsCreating(true);
     try {
-      const response = await fetch('http://localhost:8000/api/dashboards', {
+      const response = await fetch('/api/dashboards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -98,7 +98,7 @@ export function DashboardsPage() {
 
     setIsUpdating(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/dashboards/${editingDashboard.id}`, {
+      const response = await fetch(`/api/dashboards/${editingDashboard.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -134,7 +134,7 @@ export function DashboardsPage() {
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/dashboards/${deletingDashboard.id}`, {
+      const response = await fetch(`/api/dashboards/${deletingDashboard.id}`, {
         method: 'DELETE'
       });
 

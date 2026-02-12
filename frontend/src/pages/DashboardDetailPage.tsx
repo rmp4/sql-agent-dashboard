@@ -27,7 +27,7 @@ export function DashboardDetailPage() {
       if (!id) return;
 
       try {
-        const response = await fetch(`http://localhost:8000/api/dashboards/${id}`);
+        const response = await fetch(`/api/dashboards/${id}`);
         if (!response.ok) {
           throw new Error('Dashboard not found');
         }

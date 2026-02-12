@@ -49,7 +49,7 @@ export function RulesPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/rules')
+    fetch('/api/rules')
       .then(res => res.json())
       .then(data => {
         setRules(data);
@@ -62,7 +62,7 @@ export function RulesPage() {
   }, []);
 
   const toggleRule = (rule: Rule) => {
-    fetch(`http://localhost:8000/api/rules/${rule.id}`, {
+    fetch(`/api/rules/${rule.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: !rule.active })
@@ -79,7 +79,7 @@ export function RulesPage() {
 
     setIsCreating(true);
     try {
-      const response = await fetch('http://localhost:8000/api/rules', {
+      const response = await fetch('/api/rules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -123,7 +123,7 @@ export function RulesPage() {
 
     setIsUpdating(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/rules/${editingRule.id}`, {
+      const response = await fetch(`/api/rules/${editingRule.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
@@ -159,7 +159,7 @@ export function RulesPage() {
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/rules/${deletingRule.id}`, {
+      const response = await fetch(`/api/rules/${deletingRule.id}`, {
         method: 'DELETE'
       });
 

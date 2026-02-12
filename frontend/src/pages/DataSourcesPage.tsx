@@ -55,7 +55,7 @@ export function DataSourcesPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/data-sources')
+    fetch('/api/data-sources')
       .then(res => res.json())
       .then(data => {
         setConnections(data);
@@ -72,7 +72,7 @@ export function DataSourcesPage() {
   }, []);
 
   const loadSchema = (connectionId: string) => {
-    fetch(`http://localhost:8000/api/data-sources/${connectionId}/schema`)
+    fetch(`/api/data-sources/${connectionId}/schema`)
       .then(res => res.json())
       .then(data => setSchema(data))
       .catch(err => console.error('Failed to fetch schema:', err));
@@ -82,7 +82,7 @@ export function DataSourcesPage() {
     if (!selectedConnection) return;
     
     setTesting(true);
-    fetch(`http://localhost:8000/api/data-sources/${selectedConnection.id}/test`, {
+    fetch(`/api/data-sources/${selectedConnection.id}/test`, {
       method: 'POST'
     })
       .then(res => res.json())
@@ -110,7 +110,7 @@ export function DataSourcesPage() {
 
     setIsCreating(true);
     try {
-      const response = await fetch('http://localhost:8000/api/data-sources', {
+      const response = await fetch('/api/data-sources', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newConnection),
@@ -157,7 +157,7 @@ export function DataSourcesPage() {
 
     setIsUpdating(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/data-sources/${editingConnection.id}`, {
+      const response = await fetch(`/api/data-sources/${editingConnection.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
@@ -199,7 +199,7 @@ export function DataSourcesPage() {
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/data-sources/${deletingConnection.id}`, {
+      const response = await fetch(`/api/data-sources/${deletingConnection.id}`, {
         method: 'DELETE'
       });
 

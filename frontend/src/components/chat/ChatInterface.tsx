@@ -62,7 +62,7 @@ export function ChatInterface() {
   useEffect(() => {
     const fetchDashboards = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/dashboards');
+        const response = await fetch('/api/dashboards');
         if (response.ok) {
           const data = await response.json();
           setDashboards(data);
@@ -74,7 +74,7 @@ export function ChatInterface() {
 
     const fetchRules = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/rules');
+        const response = await fetch('/api/rules');
         if (response.ok) {
           const data = await response.json();
           setRules(data);
@@ -86,7 +86,7 @@ export function ChatInterface() {
 
     const fetchDataSources = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/data-sources');
+        const response = await fetch('/api/data-sources');
         if (response.ok) {
           const data = await response.json();
           setDataSources(data);
@@ -203,7 +203,7 @@ export function ChatInterface() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/dashboards/${selectedDashboardId}/charts`,
+        `/api/dashboards/${selectedDashboardId}/charts`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
