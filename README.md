@@ -1,8 +1,14 @@
-# Bag of Words - AI Analytics Platform
+# SQL Agent Dashboard
 
-React + CopilotKit + A2UI + FastAPI
+AI-powered SQL agent with natural language query generation and interactive data visualization dashboard.
 
 ## Quick Start
+
+### Prerequisites
+- Node.js 18+ and npm
+- Python 3.11+
+- PostgreSQL 14+
+- [uv](https://github.com/astral-sh/uv) for Python package management
 
 ### Frontend
 ```bash
@@ -15,28 +21,49 @@ npm run dev
 ```bash
 cd backend
 cp .env.example .env
-# Edit .env with your OpenAI API key
-uv run python src/main.py
+# Edit .env with your database credentials and OpenAI API key
+PYTHONPATH=/path/to/project/backend uv run python src/main.py
+```
+
+### Database Setup
+```bash
+cd backend
+# Run migrations
+uv run alembic upgrade head
 ```
 
 ## Tech Stack
 
-- **Frontend**: React, TypeScript, Vite, Shadcn/ui, CopilotKit, A2UI
-- **Backend**: FastAPI, OpenAI, SQLAlchemy, PostgreSQL
+- **Frontend**: React, TypeScript, Vite, TailwindCSS, Shadcn/ui, Recharts
+- **Backend**: FastAPI, OpenAI, SQLAlchemy, Alembic, PostgreSQL
 - **Package Management**: npm (frontend), uv (backend)
 
 ## Features
 
-- ✅ Chat interface with AI assistant
-- ✅ Natural language to SQL
-- ✅ Data visualizations
-- ⏳ Instructions/Rules management
-- ⏳ Memory system
-- ⏳ Agent observability
-- ⏳ Dashboard creation
+### ✅ Completed
+- Chat interface with natural language to SQL
+- 11 chart types (Line, Bar, Area, Pie, Donut, Horizontal Bar, Stacked Bar, Scatter, Combo, Table)
+- Interactive chart configuration panel
+- Dashboard management (create, list, view)
+- Data source connections management
+- Rules system for AI context
+- Fixed layout architecture (sidebar, scroll containers)
+
+### ⏳ In Progress
+- Dashboard detail page with saved charts
+- Save chart to dashboard functionality
+- Edit/Delete operations for all entities
+- Chat integration with rules and data sources
 
 ## Development
 
-Frontend: http://localhost:5173
-Backend: http://localhost:8000
-API Docs: http://localhost:8000/docs
+- Frontend: http://localhost:5173
+- Backend: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+## Database Schema
+
+- `dashboards` - Dashboard containers
+- `saved_charts` - Saved chart configurations
+- `data_source_connections` - Database connection configs
+- `rules` - AI context rules for query generation

@@ -64,3 +64,25 @@ Thumbs.db
 
 # UV
 .uv/
+
+# Test artifacts and screenshots
+*.png
+test_screenshots/
+test-results/
+test_*.png
+*_TEST_*.md
+*_COMPLETE.md
+*_ARTIFACTS_*.md
+*_backup.md
+HOW_TO_TEST.md
+PROGRESS*.md
+CHART_*.md
+TEST_*.txt
+*.spec.ts
+test.sh
+
+# Skills (external dependencies)
+.skills/
+
+# Designs
+designs/
