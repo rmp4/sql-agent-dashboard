@@ -31,7 +31,7 @@ import { ScatterPlotVisualization } from '@/components/visualizations/ScatterPlo
 import { ComboChartVisualization } from '@/components/visualizations/ComboChartVisualization';
 import { ChartConfigPanel } from '@/components/visualizations/ChartConfigPanel';
 import { CodeBlock } from '@/components/visualizations/CodeBlock';
-import type { Message, VisualizationConfig, Dashboard, Rule } from '@/types';
+import type { Message, VisualizationConfig, Dashboard, Rule, DataSourceConnection } from '@/types';
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -42,6 +42,8 @@ export function ChatInterface() {
   
   const [rules, setRules] = useState<Rule[]>([]);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
+  const [dataSources, setDataSources] = useState<DataSourceConnection[]>([]);
+  const [selectedDataSourceId, setSelectedDataSourceId] = useState<string>('');
   const [savingChartMessage, setSavingChartMessage] = useState<Message | null>(null);
   const [selectedDashboardId, setSelectedDashboardId] = useState<string>('');
   const [chartTitle, setChartTitle] = useState<string>('');
@@ -82,8 +84,25 @@ export function ChatInterface() {
       }
     };
 
+    const fetchDataSources = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/data-sources');
+        if (response.ok) {
+          const data = await response.json();
+          setDataSources(data);
+          const connected = data.find((ds: DataSourceConnection) => ds.status === 'connected');
+          if (connected) {
+            setSelectedDataSourceId(connected.id);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch data sources:', error);
+      }
+    };
+
     fetchDashboards();
     fetchRules();
+    fetchDataSources();
   }, []);
 
   const handleSendMessage = async () => {
@@ -106,7 +125,8 @@ export function ChatInterface() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           message: input,
-          rules: rules.filter(r => r.active)
+          rules: rules.filter(r => r.active),
+          data_source_id: selectedDataSourceId || undefined
         }),
       });
 
@@ -220,6 +240,22 @@ export function ChatInterface() {
   return (
     <div className="flex flex-col h-screen">
       <div className="flex-shrink-0 px-16 py-12 bg-[#FAFAFA]">
+        {dataSources.length > 0 && (
+          <div className="mb-4">
+            <Select value={selectedDataSourceId} onValueChange={setSelectedDataSourceId}>
+              <SelectTrigger className="w-[300px]">
+                <SelectValue placeholder="Select data source" />
+              </SelectTrigger>
+              <SelectContent>
+                {dataSources.map((ds) => (
+                  <SelectItem key={ds.id} value={ds.id}>
+                    {ds.name} ({ds.status})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <h1 className="text-5xl font-semibold tracking-tight mb-2" style={{ fontFamily: 'Sora', letterSpacing: '-0.04em' }}>
           Chat
         </h1>

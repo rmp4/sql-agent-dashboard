@@ -6,6 +6,7 @@ class ChatRequest(BaseModel):
     message: str
     conversation_id: Optional[str] = None
     rules: Optional[List[Dict[str, Any]]] = None
+    data_source_id: Optional[str] = None
 
 
 class QueryResult(BaseModel):

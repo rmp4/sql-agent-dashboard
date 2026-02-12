@@ -64,13 +64,42 @@ async def chat(request: ChatRequest):
         schema_context = None
         db_service = None
 
-        database_url = os.getenv("DATABASE_URL")
-        if database_url:
+        if request.data_source_id:
+            # Use specified data source
+            from src.models.models import DataSourceConnection
+            from src.models import get_db
+
+            db = next(get_db())
             try:
-                db_service = DatabaseService(database_url=database_url)
-                schema_context = db_service.get_schema()
+                data_source = (
+                    db.query(DataSourceConnection)
+                    .filter(DataSourceConnection.id == request.data_source_id)
+                    .first()
+                )
+
+                if not data_source:
+                    print(f"Data source not found: {request.data_source_id}")
+                else:
+                    status_is_connected = str(data_source.status) == "connected"
+                    if status_is_connected:  # type: ignore[truthy-bool]
+                        connection_string = f"postgresql://{data_source.username}:{data_source.password}@{data_source.host}:{data_source.port}/{data_source.database}"
+                        db_service = DatabaseService(database_url=connection_string)
+                        schema_context = db_service.get_schema()
+                    else:
+                        print(f"Data source not connected: {data_source.name}")
             except Exception as e:
-                print(f"Failed to get schema: {e}")
+                print(f"Failed to connect to specified data source: {e}")
+            finally:
+                db.close()
+        else:
+            # Fall back to default DATABASE_URL from env
+            database_url = os.getenv("DATABASE_URL")
+            if database_url:
+                try:
+                    db_service = DatabaseService(database_url=database_url)
+                    schema_context = db_service.get_schema()
+                except Exception as e:
+                    print(f"Failed to get schema: {e}")
 
         response_text, visualization_config_dict = await llm_service.generate_response(
             message=request.message,
