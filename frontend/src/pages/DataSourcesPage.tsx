@@ -38,6 +38,21 @@ export function DataSourcesPage() {
     password: ''
   });
   const [isCreating, setIsCreating] = useState(false);
+  const [editingConnection, setEditingConnection] = useState<DataSourceConnection | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    type: 'postgresql',
+    host: '',
+    port: 5432,
+    database: '',
+    username: '',
+    password: ''
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [deletingConnection, setDeletingConnection] = useState<DataSourceConnection | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetch('http://localhost:8000/api/data-sources')
@@ -123,6 +138,88 @@ export function DataSourcesPage() {
     }
   };
 
+  const handleEditClick = (conn: DataSourceConnection) => {
+    setEditingConnection(conn);
+    setEditForm({
+      name: conn.name,
+      type: conn.type,
+      host: conn.host,
+      port: conn.port,
+      database: conn.database,
+      username: conn.username,
+      password: ''
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateConnection = async () => {
+    if (!editingConnection || !editForm.name.trim() || !editForm.host.trim()) return;
+
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`http://localhost:8000/api/data-sources/${editingConnection.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+
+      if (!response.ok) throw new Error('Failed to update data source');
+
+      const updated = await response.json();
+      setConnections(prev => prev.map(c => c.id === updated.id ? updated : c));
+      if (selectedConnection?.id === updated.id) {
+        setSelectedConnection(updated);
+      }
+      setIsEditDialogOpen(false);
+      setEditingConnection(null);
+      setEditForm({
+        name: '',
+        type: 'postgresql',
+        host: '',
+        port: 5432,
+        database: '',
+        username: '',
+        password: ''
+      });
+    } catch (err) {
+      console.error('Failed to update data source:', err);
+      alert('Failed to update data source');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteClick = (conn: DataSourceConnection) => {
+    setDeletingConnection(conn);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConnection = async () => {
+    if (!deletingConnection) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`http://localhost:8000/api/data-sources/${deletingConnection.id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) throw new Error('Failed to delete data source');
+
+      setConnections(prev => prev.filter(c => c.id !== deletingConnection.id));
+      if (selectedConnection?.id === deletingConnection.id) {
+        setSelectedConnection(connections[0] || null);
+        setSchema(null);
+      }
+      setIsDeleteDialogOpen(false);
+      setDeletingConnection(null);
+    } catch (err) {
+      console.error('Failed to delete data source:', err);
+      alert('Failed to delete data source');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="px-16 py-12">
@@ -195,6 +292,28 @@ export function DataSourcesPage() {
                             {conn.status === 'connected' ? 'Connected' : 'Disconnected'}
                           </span>
                         </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditClick(conn);
+                          }}
+                          className="px-2 py-1 text-xs border border-[#E5E5E5] hover:bg-white"
+                          style={{ fontFamily: 'Sora' }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(conn);
+                          }}
+                          className="px-2 py-1 text-xs border border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626] hover:text-white"
+                          style={{ fontFamily: 'Sora' }}
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -350,6 +469,141 @@ export function DataSourcesPage() {
               className="bg-[#DC2626] hover:bg-[#B91C1C]"
             >
               {isCreating ? 'Creating...' : 'Add Connection'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Data Source</DialogTitle>
+            <DialogDescription>
+              Update the database connection details.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 my-4">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ fontFamily: 'Sora' }}>
+                Name *
+              </label>
+              <Input
+                value={editForm.name}
+                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., Production DB"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ fontFamily: 'Sora' }}>
+                  Host *
+                </label>
+                <Input
+                  value={editForm.host}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, host: e.target.value }))}
+                  placeholder="localhost"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ fontFamily: 'Sora' }}>
+                  Port
+                </label>
+                <Input
+                  type="number"
+                  value={editForm.port}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, port: parseInt(e.target.value) || 5432 }))}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ fontFamily: 'Sora' }}>
+                Database
+              </label>
+              <Input
+                value={editForm.database}
+                onChange={(e) => setEditForm(prev => ({ ...prev, database: e.target.value }))}
+                placeholder="database_name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ fontFamily: 'Sora' }}>
+                Username
+              </label>
+              <Input
+                value={editForm.username}
+                onChange={(e) => setEditForm(prev => ({ ...prev, username: e.target.value }))}
+                placeholder="username"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ fontFamily: 'Sora' }}>
+                Password
+              </label>
+              <Input
+                type="password"
+                value={editForm.password}
+                onChange={(e) => setEditForm(prev => ({ ...prev, password: e.target.value }))}
+                placeholder="Leave empty to keep unchanged"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsEditDialogOpen(false);
+                setEditingConnection(null);
+                setEditForm({
+                  name: '',
+                  type: 'postgresql',
+                  host: '',
+                  port: 5432,
+                  database: '',
+                  username: '',
+                  password: ''
+                });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleUpdateConnection}
+              disabled={!editForm.name.trim() || !editForm.host.trim() || isUpdating}
+              className="bg-[#DC2626] hover:bg-[#B91C1C]"
+            >
+              {isUpdating ? 'Updating...' : 'Update Connection'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Data Source</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{deletingConnection?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setDeletingConnection(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDeleteConnection}
+              disabled={isDeleting}
+              className="bg-[#DC2626] hover:bg-[#B91C1C]"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Connection'}
             </Button>
           </DialogFooter>
         </DialogContent>

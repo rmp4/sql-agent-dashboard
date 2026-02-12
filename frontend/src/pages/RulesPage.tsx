@@ -35,6 +35,18 @@ export function RulesPage() {
     prompt: ''
   });
   const [isCreating, setIsCreating] = useState(false);
+  const [editingRule, setEditingRule] = useState<Rule | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    description: '',
+    scope: 'global',
+    prompt: ''
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [deletingRule, setDeletingRule] = useState<Rule | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetch('http://localhost:8000/api/rules')
@@ -92,6 +104,75 @@ export function RulesPage() {
       alert('Failed to create rule');
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleEditClick = (rule: Rule) => {
+    setEditingRule(rule);
+    setEditForm({
+      name: rule.name,
+      description: rule.description,
+      scope: rule.scope,
+      prompt: rule.prompt
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateRule = async () => {
+    if (!editingRule || !editForm.name.trim() || !editForm.prompt.trim()) return;
+
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`http://localhost:8000/api/rules/${editingRule.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+
+      if (!response.ok) throw new Error('Failed to update rule');
+
+      const updated = await response.json();
+      setRules(prev => prev.map(r => r.id === updated.id ? updated : r));
+      setIsEditDialogOpen(false);
+      setEditingRule(null);
+      setEditForm({
+        name: '',
+        description: '',
+        scope: 'global',
+        prompt: ''
+      });
+    } catch (err) {
+      console.error('Failed to update rule:', err);
+      alert('Failed to update rule');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteClick = (rule: Rule) => {
+    setDeletingRule(rule);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteRule = async () => {
+    if (!deletingRule) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`http://localhost:8000/api/rules/${deletingRule.id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) throw new Error('Failed to delete rule');
+
+      setRules(prev => prev.filter(r => r.id !== deletingRule.id));
+      setIsDeleteDialogOpen(false);
+      setDeletingRule(null);
+    } catch (err) {
+      console.error('Failed to delete rule:', err);
+      alert('Failed to delete rule');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -189,10 +270,18 @@ export function RulesPage() {
                     </span>
                   </div>
                   <div className="w-[120px] flex items-center gap-3">
-                    <button className="text-sm font-medium" style={{ color: '#DC2626', fontFamily: 'Sora' }}>
+                    <button 
+                      onClick={() => handleEditClick(rule)}
+                      className="text-sm font-medium" 
+                      style={{ color: '#DC2626', fontFamily: 'Sora' }}
+                    >
                       Edit
                     </button>
-                    <button className="text-sm font-medium" style={{ color: '#999999', fontFamily: 'Sora' }}>
+                    <button 
+                      onClick={() => handleDeleteClick(rule)}
+                      className="text-sm font-medium" 
+                      style={{ color: '#999999', fontFamily: 'Sora' }}
+                    >
                       Delete
                     </button>
                   </div>
@@ -285,6 +374,124 @@ export function RulesPage() {
               className="bg-[#DC2626] hover:bg-[#B91C1C]"
             >
               {isCreating ? 'Creating...' : 'Create Rule'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Rule</DialogTitle>
+            <DialogDescription>
+              Update the rule details.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 my-4">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ fontFamily: 'Sora' }}>
+                Name *
+              </label>
+              <Input
+                value={editForm.name}
+                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., Sales Context"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ fontFamily: 'Sora' }}>
+                Description
+              </label>
+              <Input
+                value={editForm.description}
+                onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Brief description of the rule"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ fontFamily: 'Sora' }}>
+                Scope
+              </label>
+              <select
+                value={editForm.scope}
+                onChange={(e) => setEditForm(prev => ({ ...prev, scope: e.target.value }))}
+                className="w-full px-3 py-2 border border-[#E5E5E5] rounded"
+                style={{ fontFamily: 'Sora' }}
+              >
+                <option value="global">Global</option>
+                <option value="table">Table</option>
+                <option value="query_type">Query Type</option>
+                <option value="sql_style">SQL Style</option>
+                <option value="business_logic">Business Logic</option>
+                <option value="chart_preference">Chart Preference</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ fontFamily: 'Sora' }}>
+                Prompt *
+              </label>
+              <Textarea
+                value={editForm.prompt}
+                onChange={(e) => setEditForm(prev => ({ ...prev, prompt: e.target.value }))}
+                placeholder="Enter the rule instructions..."
+                rows={4}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsEditDialogOpen(false);
+                setEditingRule(null);
+                setEditForm({
+                  name: '',
+                  description: '',
+                  scope: 'global',
+                  prompt: ''
+                });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleUpdateRule}
+              disabled={!editForm.name.trim() || !editForm.prompt.trim() || isUpdating}
+              className="bg-[#DC2626] hover:bg-[#B91C1C]"
+            >
+              {isUpdating ? 'Updating...' : 'Update Rule'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Rule</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{deletingRule?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setDeletingRule(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDeleteRule}
+              disabled={isDeleting}
+              className="bg-[#DC2626] hover:bg-[#B91C1C]"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Rule'}
             </Button>
           </DialogFooter>
         </DialogContent>
