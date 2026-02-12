@@ -1,8 +1,24 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Settings } from 'lucide-react';
+import { Send, Settings, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { TableVisualization } from '@/components/visualizations/TableVisualization';
 import { LineChartVisualization } from '@/components/visualizations/LineChartVisualization';
 import { BarChartVisualization } from '@/components/visualizations/BarChartVisualization';
@@ -15,7 +31,7 @@ import { ScatterPlotVisualization } from '@/components/visualizations/ScatterPlo
 import { ComboChartVisualization } from '@/components/visualizations/ComboChartVisualization';
 import { ChartConfigPanel } from '@/components/visualizations/ChartConfigPanel';
 import { CodeBlock } from '@/components/visualizations/CodeBlock';
-import type { Message, VisualizationConfig } from '@/types';
+import type { Message, VisualizationConfig, Dashboard } from '@/types';
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -23,6 +39,14 @@ export function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [editingConfigForMessage, setEditingConfigForMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const [dashboards, setDashboards] = useState<Dashboard[]>([]);
+  const [savingChartMessage, setSavingChartMessage] = useState<Message | null>(null);
+  const [selectedDashboardId, setSelectedDashboardId] = useState<string>('');
+  const [chartTitle, setChartTitle] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string>('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -31,6 +55,22 @@ export function ChatInterface() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const fetchDashboards = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/dashboards');
+        if (response.ok) {
+          const data = await response.json();
+          setDashboards(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch dashboards:', error);
+      }
+    };
+
+    fetchDashboards();
+  }, []);
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
@@ -104,6 +144,62 @@ export function ChatInterface() {
     setEditingConfigForMessage(null);
   };
 
+  const handleOpenSaveDialog = (message: Message) => {
+    setSavingChartMessage(message);
+    const titlePreview = message.content.length > 50 
+      ? message.content.substring(0, 50) + '...' 
+      : message.content;
+    setChartTitle(titlePreview);
+    setSelectedDashboardId('');
+    setSaveError('');
+    setSaveSuccess(false);
+  };
+
+  const handleSaveChart = async () => {
+    if (!selectedDashboardId || !chartTitle.trim() || !savingChartMessage) {
+      setSaveError('Please select a dashboard and enter a chart title');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError('');
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/dashboards/${selectedDashboardId}/charts`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dashboard_id: selectedDashboardId,
+            title: chartTitle,
+            sql: savingChartMessage.sql,
+            visualization: savingChartMessage.visualization,
+            refresh_interval: null
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to save chart');
+      }
+
+      setSaveSuccess(true);
+      setTimeout(() => {
+        setSavingChartMessage(null);
+        setSelectedDashboardId('');
+        setChartTitle('');
+        setSaveSuccess(false);
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to save chart:', error);
+      setSaveError(error instanceof Error ? error.message : 'Failed to save chart');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen">
       <div className="flex-shrink-0 px-16 py-12 bg-[#FAFAFA]">
@@ -151,7 +247,7 @@ export function ChatInterface() {
                 
                 {message.queryResult && message.visualization && (
                   <div className="mr-auto max-w-[80%] space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -161,6 +257,14 @@ export function ChatInterface() {
                       >
                         <Settings className="h-4 w-4 mr-1" />
                         {editingConfigForMessage === message.id ? 'Hide Config' : 'Configure Chart'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenSaveDialog(message)}
+                      >
+                        <Save className="h-4 w-4 mr-1" />
+                        Save to Dashboard
                       </Button>
                     </div>
 
@@ -341,6 +445,68 @@ export function ChatInterface() {
           </Button>
         </div>
       </div>
+
+      <Dialog open={!!savingChartMessage} onOpenChange={(open) => !open && setSavingChartMessage(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Chart to Dashboard</DialogTitle>
+            <DialogDescription>
+              Select a dashboard and give your chart a title
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Dashboard</label>
+              <Select value={selectedDashboardId} onValueChange={setSelectedDashboardId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a dashboard" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dashboards.map((dashboard) => (
+                    <SelectItem key={dashboard.id} value={dashboard.id}>
+                      {dashboard.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Chart Title</label>
+              <Input
+                value={chartTitle}
+                onChange={(e) => setChartTitle(e.target.value)}
+                placeholder="Enter chart title"
+              />
+            </div>
+
+            {saveError && (
+              <div className="text-sm text-destructive">{saveError}</div>
+            )}
+
+            {saveSuccess && (
+              <div className="text-sm text-green-600">Chart saved successfully!</div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSavingChartMessage(null)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveChart}
+              disabled={isSaving || !selectedDashboardId || !chartTitle.trim()}
+            >
+              {isSaving ? 'Saving...' : 'Save Chart'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
