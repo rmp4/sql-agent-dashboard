@@ -31,7 +31,7 @@ import { ScatterPlotVisualization } from '@/components/visualizations/ScatterPlo
 import { ComboChartVisualization } from '@/components/visualizations/ComboChartVisualization';
 import { ChartConfigPanel } from '@/components/visualizations/ChartConfigPanel';
 import { CodeBlock } from '@/components/visualizations/CodeBlock';
-import type { Message, VisualizationConfig, Dashboard } from '@/types';
+import type { Message, VisualizationConfig, Dashboard, Rule } from '@/types';
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -40,6 +40,7 @@ export function ChatInterface() {
   const [editingConfigForMessage, setEditingConfigForMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
+  const [rules, setRules] = useState<Rule[]>([]);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [savingChartMessage, setSavingChartMessage] = useState<Message | null>(null);
   const [selectedDashboardId, setSelectedDashboardId] = useState<string>('');
@@ -69,7 +70,20 @@ export function ChatInterface() {
       }
     };
 
+    const fetchRules = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/rules');
+        if (response.ok) {
+          const data = await response.json();
+          setRules(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch rules:', error);
+      }
+    };
+
     fetchDashboards();
+    fetchRules();
   }, []);
 
   const handleSendMessage = async () => {
@@ -90,7 +104,10 @@ export function ChatInterface() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input }),
+        body: JSON.stringify({ 
+          message: input,
+          rules: rules.filter(r => r.active)
+        }),
       });
 
       if (!response.ok) {

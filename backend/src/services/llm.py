@@ -1,7 +1,7 @@
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
 import os
-from typing import Optional, Dict
+from typing import Optional, Dict, List, Any
 
 
 class LLMService:
@@ -11,7 +11,11 @@ class LLMService:
         self.model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
     async def generate_response(
-        self, message: str, conversation_id: str, schema_context: Optional[Dict] = None
+        self,
+        message: str,
+        conversation_id: str,
+        schema_context: Optional[Dict] = None,
+        rules: Optional[List[Dict[str, Any]]] = None,
     ) -> tuple[str, Optional[Dict]]:
         if not self.client:
             return (
@@ -119,6 +123,14 @@ Be concise but thorough. Always ask for clarification if the question is ambiguo
                     for col in columns:
                         schema_info += f"  - {col['name']} ({col['type']}){' NOT NULL' if not col['nullable'] else ''}\n"
                 system_prompt += schema_info
+
+            if rules:
+                rules_text = "\n\nUSER-DEFINED RULES:\n"
+                for rule in rules:
+                    rules_text += (
+                        f"\n{rule['name']} ({rule['scope']}):\n{rule['prompt']}\n"
+                    )
+                system_prompt += rules_text
 
             messages: list[ChatCompletionMessageParam] = [
                 {"role": "system", "content": system_prompt},

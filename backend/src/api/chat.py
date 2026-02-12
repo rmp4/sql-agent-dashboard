@@ -76,6 +76,7 @@ async def chat(request: ChatRequest):
             message=request.message,
             conversation_id=conversation_id,
             schema_context=schema_context,
+            rules=request.rules,
         )
 
         sql_query = extract_sql_from_response(response_text)

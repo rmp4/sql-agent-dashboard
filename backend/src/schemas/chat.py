@@ -5,6 +5,7 @@ from typing import Optional, Dict, Any, List
 class ChatRequest(BaseModel):
     message: str
     conversation_id: Optional[str] = None
+    rules: Optional[List[Dict[str, Any]]] = None
 
 
 class QueryResult(BaseModel):
