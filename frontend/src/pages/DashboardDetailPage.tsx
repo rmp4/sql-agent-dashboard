@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { TableVisualization } from '@/components/visualizations/TableVisualization';
 import { LineChartVisualization } from '@/components/visualizations/LineChartVisualization';
 import { BarChartVisualization } from '@/components/visualizations/BarChartVisualization';
@@ -13,7 +13,7 @@ import { HorizontalBarChartVisualization } from '@/components/visualizations/Hor
 import { StackedBarChartVisualization } from '@/components/visualizations/StackedBarChartVisualization';
 import { ScatterPlotVisualization } from '@/components/visualizations/ScatterPlotVisualization';
 import { ComboChartVisualization } from '@/components/visualizations/ComboChartVisualization';
-import type { Dashboard, SavedChart } from '@/types';
+import type { Dashboard, SavedChart, QueryResult } from '@/types';
 
 export function DashboardDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +21,8 @@ export function DashboardDetailPage() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [chartData, setChartData] = useState<Record<string, QueryResult>>({});
+  const [loadingCharts, setLoadingCharts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -33,6 +35,10 @@ export function DashboardDetailPage() {
         }
         const data = await response.json();
         setDashboard(data);
+        
+        if (data.charts && data.charts.length > 0) {
+          await executeAllCharts(data.charts);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load dashboard');
       } finally {
@@ -43,30 +49,100 @@ export function DashboardDetailPage() {
     fetchDashboard();
   }, [id]);
 
+  const executeAllCharts = async (charts: SavedChart[]) => {
+    for (const chart of charts) {
+      await executeChart(chart.id);
+    }
+  };
+
+  const executeChart = async (chartId: string) => {
+    setLoadingCharts(prev => new Set(prev).add(chartId));
+    
+    try {
+      const response = await fetch(`/api/charts/${chartId}/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to execute chart query');
+      }
+      
+      const data = await response.json();
+      const queryResult = data.query_result;
+      
+      setChartData(prev => ({
+        ...prev,
+        [chartId]: {
+          columns: queryResult.columns,
+          rows: queryResult.rows,
+          rowCount: queryResult.row_count || queryResult.rowCount
+        }
+      }));
+    } catch (err) {
+      console.error(`Failed to execute chart ${chartId}:`, err);
+    } finally {
+      setLoadingCharts(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(chartId);
+        return newSet;
+      });
+    }
+  };
+
   const renderChart = (chart: SavedChart) => {
     const viz = chart.visualization;
+    const queryResult = chartData[chart.id];
+    const isLoading = loadingCharts.has(chart.id);
 
-    if (viz.type === 'table' && chart.queryResult) {
-      return (
-        <TableVisualization
-          columns={chart.queryResult.columns}
-          rows={chart.queryResult.rows}
-          rowCount={chart.queryResult.rowCount}
-        />
-      );
-    }
-
-    if (!viz.xKey || !viz.yKeys || viz.yKeys.length === 0 || !chart.queryResult) {
+    if (isLoading) {
       return (
         <Card className="p-8">
-          <p className="text-center text-muted-foreground">
-            No data available. Execute query to see visualization.
-          </p>
+          <div className="flex items-center justify-center">
+            <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Loading data...</span>
+          </div>
         </Card>
       );
     }
 
-    const data = chart.queryResult.rows;
+    if (!queryResult) {
+      return (
+        <Card className="p-8">
+          <p className="text-center text-muted-foreground">
+            No data available. Click refresh to execute query.
+          </p>
+          <div className="flex justify-center mt-4">
+            <Button variant="outline" size="sm" onClick={() => executeChart(chart.id)}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
+        </Card>
+      );
+    }
+
+    if (viz.type === 'table') {
+      return (
+        <TableVisualization
+          columns={queryResult.columns}
+          rows={queryResult.rows}
+          rowCount={queryResult.rowCount}
+        />
+      );
+    }
+
+    if (!viz.xKey || !viz.yKeys || viz.yKeys.length === 0) {
+      return (
+        <TableVisualization
+          columns={queryResult.columns}
+          rows={queryResult.rows}
+          rowCount={queryResult.rowCount}
+        />
+      );
+    }
+
+    const data = queryResult.rows;
 
     switch (viz.type) {
       case 'line':
@@ -153,12 +229,12 @@ export function DashboardDetailPage() {
           />
         );
       default:
-        if (chart.queryResult) {
+        if (queryResult) {
           return (
             <TableVisualization
-              columns={chart.queryResult.columns}
-              rows={chart.queryResult.rows}
-              rowCount={chart.queryResult.rowCount}
+              columns={queryResult.columns}
+              rows={queryResult.rows}
+              rowCount={queryResult.rowCount}
             />
           );
         }
