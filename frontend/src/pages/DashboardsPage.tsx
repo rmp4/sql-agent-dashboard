@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ interface Dashboard {
 }
 
 export function DashboardsPage() {
+  const navigate = useNavigate();
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -119,6 +121,7 @@ export function DashboardsPage() {
               <div 
                 key={dashboard.id}
                 className="border border-[#E5E5E5] p-6 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => navigate(`/dashboards/${dashboard.id}`)}
               >
                 <h3 className="text-xl font-semibold mb-2" style={{ fontFamily: 'Sora' }}>
                   {dashboard.name}
